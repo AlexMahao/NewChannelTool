@@ -1,6 +1,11 @@
 package com.spearbothy.channel.writer;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,9 +13,10 @@ import java.util.List;
  * Created by mahao on 17-8-3.
  */
 public class FileUtil {
-    public static final String DIR = "channel";
 
-    public static void copyFile(File source, File target) {
+    static final String DIR = "channel";
+
+    static void copyFile(File source, File target) {
         FileInputStream in = null;
         FileOutputStream out = null;
         try {
@@ -38,12 +44,11 @@ public class FileUtil {
         }
     }
 
-    public static String getChannelFileName(File file, String channel) {
-        System.out.println(file.getName());
+    static String getChannelFileName(File file, String channel) {
         return file.getName().split("\\.")[0] + "_" + channel + ".apk";
     }
 
-    public static List<String> readChannel(String path) {
+    static List<String> readChannel(String path) {
         List<String> channelList = new ArrayList<>();
         File file = new File(path);
         // 如果文件不存在，则提示

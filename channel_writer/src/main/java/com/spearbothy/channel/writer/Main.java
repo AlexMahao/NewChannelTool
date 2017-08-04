@@ -3,9 +3,11 @@ package com.spearbothy.channel.writer;
 
 import com.spearbothy.channel.common.ApkSignBlockUtil;
 import com.spearbothy.channel.common.SignatureNotFoundException;
+import com.spearbothy.channel.common.log.Log;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,36 +16,48 @@ import java.util.List;
  */
 public class Main {
 
+    static final SimpleDateFormat sdf = new SimpleDateFormat("ss.SSS");
+
     public static void main(String[] args) {
+        Log.i("读取渠道文件");
         List<String> channelList = FileUtil.readChannel("channel_writer/channel.txt");
         List<String> errorList = new ArrayList<>();
-        System.out.println(channelList);
+        Log.i("\t渠道列表：" + channelList);
         File apkFile = new File("channel_writer/app-release.apk");
-
+        Log.d("获取apk path:" + apkFile.exists());
         if (!apkFile.exists()) {
+            Log.e(apkFile + " not exist!!");
             return;
         }
         File dirFile = new File(FileUtil.DIR);
+        Log.d("渠道文件目录：" + dirFile.getAbsolutePath());
         if (!dirFile.exists()) {
             dirFile.mkdirs();
         }
+        Log.i("-----------------------------------------");
         File channelFile;
         for (String channel : channelList) {
-            System.out.println("开始注入渠道:" + channel);
-            System.out.println(channel + "--start:" + System.currentTimeMillis());
+            Log.i("开始注入渠道：" + channel);
+            long startTime = System.currentTimeMillis();
             channelFile = new File(dirFile, FileUtil.getChannelFileName(apkFile, channel));
+            Log.i("\t拷贝文件：from--" + apkFile.getAbsolutePath() + "---to--" + channelFile.getAbsolutePath());
             FileUtil.copyFile(apkFile, channelFile);
             try {
+                Log.i("\t写入渠道信息：id=" + ApkSignBlockUtil.APK_SIGNATURE_CHANNEL_ID + ",channel=" + channel);
                 ApkSignBlockWriter.put(channelFile, ApkSignBlockUtil.APK_SIGNATURE_CHANNEL_ID, channel);
             } catch (SignatureNotFoundException e) {
                 errorList.add(channel);
-                e.printStackTrace();
+                Log.e(channel + "  fail !!!");
+                Log.d(e.getMessage());
             } catch (IOException e) {
                 errorList.add(channel);
-                e.printStackTrace();
+                Log.e(channel + "  fail !!!");
+                Log.d(e.getMessage());
             }
-            System.out.println(channel + "--end:" + System.currentTimeMillis());
+            long dTime = System.currentTimeMillis() - startTime;
+            Log.i(channel + "渠道注入完毕，耗时：" + sdf.format(dTime) + "ms");
         }
-        System.out.println("渠道失败文件：" + errorList);
+        Log.i("-----------------------------------------");
+        Log.i("渠道注入失败列表：" + errorList);
     }
 }

@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import com.spearbothy.channel.common.ApkSignBlockUtil;
 import com.spearbothy.channel.common.SignatureNotFoundException;
+import com.spearbothy.channel.common.log.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,29 +22,39 @@ import java.util.Map;
 public class ChannelReader {
 
     public static String getChannelInfo(Context context) {
-        String sourceDir = context.getApplicationInfo().sourceDir;
+        // 初始化Log方式
+        LogImpl.init();
 
+        String sourceDir = context.getApplicationInfo().sourceDir;
+        Log.d("获取apk路径：" + sourceDir);
         if (TextUtils.isEmpty(sourceDir)) {
+            Log.e("apk路径获取失败，exit");
             return null;
         }
         File apkFile = new File(sourceDir);
         if (!apkFile.exists()) {
+            Log.e("apk文件不存在，exit");
             return null;
         }
+        Log.d("获取apk sign block 中id-values 集合");
         final Map<Integer, ByteBuffer> idValues = getAll(apkFile);
         if (idValues == null) {
             return null;
         }
+        Log.d("获取apk sign block 中id=" + ApkSignBlockUtil.APK_SIGNATURE_CHANNEL_ID + "对应value");
         final ByteBuffer byteBuffer = idValues.get(ApkSignBlockUtil.APK_SIGNATURE_CHANNEL_ID);
         if (byteBuffer == null) {
+            Log.e("渠道信息不存在");
             return null;
         }
-
         try {
-            return new String(getBytes(byteBuffer), ApkSignBlockUtil.DEFAULT_CHARSET);
+            String channel = new String(getBytes(byteBuffer), ApkSignBlockUtil.DEFAULT_CHARSET);
+            Log.i("获取渠道信息：" + channel);
+            return channel;
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Log.e("获取渠道信息失败：" + e.getMessage());
         }
+        Log.e("获取渠道信息失败");
         return null;
     }
 
@@ -79,9 +90,7 @@ public class ChannelReader {
                 } catch (IOException ignore) {
                 }
             }
-        } catch (SignatureNotFoundException ignore) {
-        }
-
+        } catch (SignatureNotFoundException ignore) {}
         return idValues;
     }
 }

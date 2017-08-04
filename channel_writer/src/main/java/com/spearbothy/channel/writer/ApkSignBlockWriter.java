@@ -6,6 +6,7 @@ import com.spearbothy.channel.common.ApkSigningBlock;
 import com.spearbothy.channel.common.ApkSigningPayload;
 import com.spearbothy.channel.common.Pair;
 import com.spearbothy.channel.common.SignatureNotFoundException;
+import com.spearbothy.channel.common.log.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,27 +27,27 @@ public final class ApkSignBlockWriter {
         fIn = new RandomAccessFile(apkFile, "rw");
         fileChannel = fIn.getChannel();
         final long commentLength = ApkSignBlockUtil.getCommentLength(fileChannel);
-        log("EOCD: comment length: " + commentLength);
+        Log.d("EOCD: comment length: " + commentLength);
         final long centralDirStartOffset = ApkSignBlockUtil.findCentralDirStartOffset(fileChannel, commentLength);
-        log("EOCD:central directory start offset:" + centralDirStartOffset);
+        Log.d("EOCD:central directory start offset:" + centralDirStartOffset);
         Pair<ByteBuffer, Long> apkSigningBlockAndOffset = ApkSignBlockUtil.findApkSigningBlock(fileChannel, centralDirStartOffset);
 
         ByteBuffer apkSigningBlock = apkSigningBlockAndOffset.getFirst();
         long apkSigningBlockOffset = apkSigningBlockAndOffset.getSecond();
-        log("apk signing block  start offset:" + apkSigningBlockOffset);
+        Log.d("apk signing block  start offset:" + apkSigningBlockOffset);
         // 获取签名快中对应的id-value
         final Map<Integer, ByteBuffer> originIdValues = ApkSignBlockUtil.findIdValues(apkSigningBlock);
-        log("apk sign block v2 is exist!");
+        Log.d("apk sign block v2 is exist, next ");
         final ByteBuffer apkSignatureSchemeV2Block = originIdValues.get(ApkSignBlockUtil.APK_SIGNATURE_SCHEME_V2_BLOCK_ID);
         if (apkSignatureSchemeV2Block == null) {
             throw new IOException(
                     "No APK Signature Scheme v2 block in APK Signing Block");
         }
         if (string != null) {
-            log("添加自定义id-value:" + id);
+            Log.d("添加自定义id-value:" + id);
             originIdValues.put(id, string2ByteBuffer(string));
         }
-        log("构造新的apkSignBlock");
+        Log.d("构造新的apkSignBlock");
         final ApkSigningBlock newApkSigningBlock = new ApkSigningBlock();
         final Set<Map.Entry<Integer, ByteBuffer>> entrySet = originIdValues.entrySet();
         for (Map.Entry<Integer, ByteBuffer> entry : entrySet) {
@@ -55,45 +56,39 @@ public final class ApkSignBlockWriter {
         }
 
         if (apkSigningBlockOffset != 0 && centralDirStartOffset != 0) {
-            log("读取central directory");
+            Log.d("读取central directory");
             fIn.seek(centralDirStartOffset);
             byte[] centralDirBytes = new byte[(int) (fileChannel.size() - centralDirStartOffset)];
             fIn.read(centralDirBytes);
-            log("移动到apk sign Bloc offset");
+            Log.d("移动到apk sign Bloc offset");
             fileChannel.position(apkSigningBlockOffset);
-            log("写入apk sign block");
+            Log.d("写入apk sign block");
             final long length = newApkSigningBlock.writeApkSigningBlock(fIn);
-            log("重新写入central directory");
+            Log.d("重新写入central directory");
             fIn.write(centralDirBytes);
             fIn.setLength(fIn.getFilePointer());
 
-            log("reset central directory start offset");
+            Log.d("reset central directory start offset");
             // 6 = 2(Comment length) + 4 (Offset of start of central directory, relative to start of archive)
             fIn.seek(fileChannel.size() - commentLength - 6);
             final ByteBuffer temp = ByteBuffer.allocate(4);
             temp.order(ByteOrder.LITTLE_ENDIAN);
             int offsetStart = (int) (centralDirStartOffset + length + 8 - (centralDirStartOffset - apkSigningBlockOffset));
             temp.putInt(offsetStart);
-            log("update central directory offset = " + offsetStart);
+            Log.d("update central directory offset = " + offsetStart);
             // 8 = size of block in bytes (excluding this field) (uint64)
             temp.flip();
             fIn.write(temp.array());
-
-            log("over");
+            Log.d(" apk sign block writer ---- over");
         }
     }
 
-
-    public static ByteBuffer string2ByteBuffer(String string) throws UnsupportedEncodingException {
+    static ByteBuffer string2ByteBuffer(String string) throws UnsupportedEncodingException {
         final byte[] bytes = string.getBytes(ApkSignBlockUtil.DEFAULT_CHARSET);
         final ByteBuffer byteBuffer = ByteBuffer.allocate(bytes.length);
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         byteBuffer.put(bytes, 0, bytes.length);
         byteBuffer.flip();
         return byteBuffer;
-    }
-
-    public static void log(String string) {
-        System.out.println(string);
     }
 }
