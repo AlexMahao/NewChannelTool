@@ -3,6 +3,7 @@ apply plugin: 'java'
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile project(':channel_common')
+    compile 'com.android.tools.build:apksig:2.3.0-alpha3'
 }
 
 sourceCompatibility = "1.7"
